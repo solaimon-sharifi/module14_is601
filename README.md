@@ -1,264 +1,95 @@
-# 📦 Project Setup
+# Calculator BREAD App
 
----
+FastAPI + SQLAlchemy + Playwright starter for the Module 14 calculator assignment. Users can register, authenticate, and perform full BREAD (Browse / Read / Edit / Add / Delete) calculations that stay scoped to their account.
 
-# 🧩 1. Install Homebrew (Mac Only)
+## Requirements
 
-> Skip this step if you're on Windows.
+- Python 3.10+ (tested with 3.10.13)
+- PostgreSQL (local or Docker)
+- [Playwright](https://playwright.dev/python/docs/intro) for the UI tests
+- Docker / Docker Compose for containerized runs
 
-Homebrew is a package manager for macOS.  
-You’ll use it to easily install Git, Python, Docker, etc.
+## Local Setup
 
-**Install Homebrew:**
+1. Create and activate the project virtual environment:
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-**Verify Homebrew:**
+2. Upgrade pip and install the pinned dependencies:
 
 ```bash
-brew --version
-```
-
-If you see a version number, you're good to go.
-
----
-
-# 🧩 2. Install and Configure Git
-
-## Install Git
-
-- **MacOS (using Homebrew)**
-
-```bash
-brew install git
-```
-
-- **Windows**
-
-Download and install [Git for Windows](https://git-scm.com/download/win).  
-Accept the default options during installation.
-
-**Verify Git:**
-
-```bash
-git --version
-```
-
----
-
-## Configure Git Globals
-
-Set your name and email so Git tracks your commits properly:
-
-```bash
-git config --global user.name "Your Name"
-git config --global user.email "your_email@example.com"
-```
-
-Confirm the settings:
-
-```bash
-git config --list
-```
-
----
-
-## Generate SSH Keys and Connect to GitHub
-
-> Only do this once per machine.
-
-1. Generate a new SSH key:
-
-```bash
-ssh-keygen -t ed25519 -C "your_email@example.com"
-```
-
-(Press Enter at all prompts.)
-
-2. Start the SSH agent:
-
-```bash
-eval "$(ssh-agent -s)"
-```
-
-3. Add the SSH private key to the agent:
-
-```bash
-ssh-add ~/.ssh/id_ed25519
-```
-
-4. Copy your SSH public key:
-
-- **Mac/Linux:**
-
-```bash
-cat ~/.ssh/id_ed25519.pub | pbcopy
-```
-
-- **Windows (Git Bash):**
-
-```bash
-cat ~/.ssh/id_ed25519.pub | clip
-```
-
-5. Add the key to your GitHub account:
-   - Go to [GitHub SSH Settings](https://github.com/settings/keys)
-   - Click **New SSH Key**, paste the key, save.
-
-6. Test the connection:
-
-```bash
-ssh -T git@github.com
-```
-
-You should see a success message.
-
----
-
-# 🧩 3. Clone the Repository
-
-Now you can safely clone the course project:
-
-```bash
-git clone <repository-url>
-cd <repository-directory>
-```
-
----
-
-# 🛠️ 4. Install Python 3.10+
-
-## Install Python
-
-- **MacOS (Homebrew)**
-
-```bash
-brew install python
-```
-
-- **Windows**
-
-Download and install [Python for Windows](https://www.python.org/downloads/).  
-✅ Make sure you **check the box** `Add Python to PATH` during setup.
-
-**Verify Python:**
-
-```bash
-python3 --version
-```
-or
-```bash
-python --version
-```
-
----
-
-## Create and Activate a Virtual Environment
-
-(Optional but recommended)
-
-```bash
-python3 -m venv venv
-source venv/bin/activate   # Mac/Linux
-venv\Scripts\activate.bat  # Windows
-```
-
-### Install Required Packages
-
-```bash
+pip install --upgrade pip
 pip install -r requirements.txt
+playwright install
 ```
 
----
+3. Keep the virtual environment active whenever you work in this repo. You can also prefix tools with `.venv/bin/` (e.g., `.venv/bin/pytest`) if you forget to activate; this guarantees the same dependency set without relying on the system Python.
 
-# 🐳 5. (Optional) Docker Setup
+4. Copy `.env.example` (if present) or export the required environment variables such as `DATABASE_URL`, `JWT_SECRET_KEY`, etc. Defaults in `app/core/config.py` point at `postgresql://postgres:postgres@localhost:5432/fastapi_db`.
 
-> Skip if Docker isn't used in this module.
+## Running the App
 
-## Install Docker
-
-- [Install Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/)
-- [Install Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/)
-
-## Build Docker Image
+Ensure the database is available, initialize it, and launch the server from the repo root:
 
 ```bash
-docker build -t <image-name> .
+python -m app.database_init
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Run Docker Container
+Visit `http://localhost:8000` to login, register, and exercise the dashboard templates. The `/calculations` API layer enforces per-user scoping, and the frontend templates cover list, detail, edit, and delete views.
+
+## Running Tests Locally
 
 ```bash
-docker run -it --rm <image-name>
+source .venv/bin/activate
+pytest tests/unit/
+pytest tests/integration/
+pytest tests/e2e/
 ```
 
----
+Playwright-based E2E tests exercise login + BREAD flows through the UI. The `tests/conftest.py` fixture boots the FastAPI server and a Playwright browser session automatically.
 
-# 🚀 6. Running the Project
+## Docker
 
-- **Without Docker**:
+Build the image and run a container:
 
 ```bash
-python main.py
+docker build -t solaimon/module14_is601:latest .
+docker run --rm -p 8000:8000 solaimon/module14_is601:latest
 ```
 
-(or update this if the main script is different.)
-
-- **With Docker**:
+Or use Docker Compose to run the web app alongside PostgreSQL and pgAdmin:
 
 ```bash
-docker run -it --rm <image-name>
+docker-compose up --build
 ```
 
----
+The Compose file exposes the calculator at `http://localhost:8000` and pgAdmin at `http://localhost:5050` (admin@example.com / admin).
 
-# 📝 7. Submission Instructions
-
-After finishing your work:
+You can automate a full rebuild and log check with the supplied helper script:
 
 ```bash
-git add .
-git commit -m "Complete Module X"
-git push origin main
+chmod +x scripts/docker_rebuild_logs.sh
+scripts/docker_rebuild_logs.sh
 ```
+This script runs `docker-compose down`, rebuilds the services with `--no-cache`, brings everything up detached, and streams the latest logs so you can verify startup.
 
-Then submit the GitHub repository link as instructed.
+## CI/CD & Docker Hub
 
----
+GitHub Actions (`.github/workflows/test.yml`) now:
 
-# 🔥 Useful Commands Cheat Sheet
+1. Boots a PostgreSQL service
+2. Installs dependencies + Playwright browsers
+3. Runs unit, integration, and E2E suites (pytest)
+4. Builds a Docker image and scans it with Trivy
+5. Pushes multi-arch image to Docker Hub as `solaimon/module14_is601:latest` and `solaimon/module14_is601:${{ github.sha }}` when `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` secrets are provided and the `main` branch is updated
 
-| Action                         | Command                                          |
-| ------------------------------- | ------------------------------------------------ |
-| Install Homebrew (Mac)          | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` |
-| Install Git                     | `brew install git` or Git for Windows installer |
-| Configure Git Global Username  | `git config --global user.name "Your Name"`      |
-| Configure Git Global Email     | `git config --global user.email "you@example.com"` |
-| Clone Repository                | `git clone <repo-url>`                          |
-| Create Virtual Environment     | `python3 -m venv venv`                           |
-| Activate Virtual Environment   | `source venv/bin/activate` / `venv\Scripts\activate.bat` |
-| Install Python Packages        | `pip install -r requirements.txt`               |
-| Build Docker Image              | `docker build -t <image-name> .`                |
-| Run Docker Container            | `docker run -it --rm <image-name>`               |
-| Push Code to GitHub             | `git add . && git commit -m "message" && git push` |
+Verify the workflow run and Docker Hub tags via the GitHub Actions logs/history for grading artifacts.
 
----
+## Reflection / Follow-up
 
-# 📋 Notes
-
-- Install **Homebrew** first on Mac.
-- Install and configure **Git** and **SSH** before cloning.
-- Use **Python 3.10+** and **virtual environments** for Python projects.
-- **Docker** is optional depending on the project.
-
----
-
-# 📎 Quick Links
-
-- [Homebrew](https://brew.sh/)
-- [Git Downloads](https://git-scm.com/downloads)
-- [Python Downloads](https://www.python.org/downloads/)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [GitHub SSH Setup Guide](https://docs.github.com/en/authentication/connecting-to-github-with-ssh)
+- See `REFLECTION.md` for prompts you can expand on before submission.
+- Update the `docs/` directory if you extend the feature set beyond the base assignment.
